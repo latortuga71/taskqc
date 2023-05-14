@@ -8,7 +8,6 @@
 //
 //  Expose Functions Here
 
-#include <netinet/in.h>
 #endif
 
 // Implementations
@@ -35,7 +34,7 @@
 
 typedef struct {
     uint32_t length;
-    char *    data;
+    char data[1024];
 } task_msg;
 
 
@@ -86,13 +85,54 @@ task_queue* init_queue(uint32_t capacity){
 
 int taskqc_socket_bind(taskqc_socket* socket, int max_conns){
     if (bind(socket->socket,(struct sockaddr*) socket->taskqc_addr, sizeof(struct sockaddr_in)) == -1){
-        fprintf(stderr,"Error::taskqc_bind::bind::%d",errno);
+        fprintf(stderr,"error::taskqc_bind::bind::%d",errno);
         return -1;
     }
     socket->max_connections = max_conns;
     if (listen(socket->socket,socket->max_connections) == -1){
-        fprintf(stderr,"Error::taskqc_bind::listen::%d",errno);
+        fprintf(stderr,"error::taskqc_bind::listen::%d",errno);
         return -1;
     }
     return 0;
+};
+
+bool taskqc_send_msg(taskqc_socket* socket,void* data,uint32_t data_length ){
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+    if (connect(socket->socket,(struct sockaddr*)socket->taskqc_addr,addr_size) == -1){
+        fprintf(stderr,"error::taskqc_send_msg::connect::%d",errno);
+        return false;
+    }
+    task_msg msg = {
+        .length = data_length,
+        .data = "HELLO",
+    };
+    ssize_t nwrote = send(socket->socket,&msg,sizeof(msg.length)+ data_length,0);
+    if (nwrote == -1){
+        fprintf(stderr,"error::taskqc_send_msg::send::%d",errno);
+        return false;
+    }
+    printf("SENT DATA! %li\n",nwrote);
+    return true;
+}
+
+task_msg* taskqc_recv_msg(taskqc_socket* socket){
+        task_msg msg;
+        struct sockaddr_storage client_addr;
+        socklen_t client_addr_size = sizeof(client_addr);
+        int new_fd = accept(socket->socket,(struct sockaddr*)&client_addr,&client_addr_size);
+        if (new_fd == -1){
+            fprintf(stderr,"error::taskqc_recv_msg::accept::%d",errno);
+            exit(errno);
+        }
+        ssize_t nread = recv(new_fd,&msg,sizeof(msg),0);
+        printf("%li\n",nread);
+        printf("Yay Message Size Is %d bytes\n",msg.length);
+        printf("Got the string! %s\n",msg.data);
+        if (nread < 0){
+            fprintf(stderr,"error::taskqc_recv_msg::recv::%d",errno);
+            exit(errno);
+        }
+        printf("Yay Message Size Is %d bytes\n",msg.length);
+        printf("Got the string! %s\n",msg.data);
+        return NULL;
 }

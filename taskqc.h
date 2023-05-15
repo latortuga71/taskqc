@@ -44,7 +44,8 @@ typedef struct {
 typedef struct {
     uint32_t capacity;
     uint32_t current;
-    taskqc_msg* queue;
+    taskqc_msg** front;
+    taskqc_msg** rear;
 } task_queue;
 
 
@@ -94,9 +95,53 @@ task_queue* init_queue(uint32_t capacity){
     task_queue* tq = (task_queue*)malloc(sizeof(task_queue));
     tq->capacity = capacity;
     tq->current = 0;
-    tq->queue = NULL;
+    tq->front = (taskqc_msg**)malloc(sizeof(task_queue*) * capacity);
+    tq->rear = tq->front;
     return tq;
 }
+
+void print_queue(task_queue* queue){
+    for (int x = 0; x < queue->current; x++){
+        printf("[%d] -> %d\n",x, queue->front[x]->length);
+        if (queue->front[x] == NULL){
+            return;
+        }
+    }
+}
+
+taskqc_msg* pop_queue_msg(task_queue* queue){
+    // maybe in future if too many empty spots we can resize?
+    if (queue->current == 0)
+        return NULL;
+    taskqc_msg* popped = queue->front[0];
+    for (int x = 0; x < queue->current; x++){
+        queue->front[x] = queue->front[x+1];
+    }
+    // the one at the end is empty now we can just move current down 1
+    queue->current--;
+    // set the rear again;
+    queue->rear = &queue->front[queue->current];
+    return popped;
+}
+
+void push_queue_msg(task_queue* queue,taskqc_msg* msg){
+    // if queue is empty add the front and rear point to the same place
+    if (queue->capacity - 1 == queue->current){
+        // resize queue
+        void* tmp = realloc(queue->front, sizeof(task_queue*) * (queue->capacity * 2));
+        if (tmp == NULL){
+            fprintf(stderr,"error::push_queue_msg::realloc::OOM");
+            exit(-1);
+        }
+        queue->front = (taskqc_msg**)tmp;
+        queue->capacity = queue->capacity * 2;
+    }
+    // add msg to queue
+    queue->front[queue->current] = msg;
+    queue->rear = &queue->front[queue->current];
+    queue->current++;
+}
+
 
 
 int taskqc_socket_bind(taskqc_socket* socket, int max_conns){

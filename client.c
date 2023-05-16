@@ -13,11 +13,12 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 int main(int argc,char** argv){
-    //taskqc_socket* socket = taskqc_socket_init(9999,"127.0.0.1");
+    taskqc_socket* socket = taskqc_socket_init(9999,"127.0.0.1");
+    taskqc_connect(socket);
     //char data[] = "BUFFERTESTER";
     //printf("Length %li\n",strlen(data));
     //taskqc_send(socket, data, strlen(data));
-    task_queue* q = init_queue(1);
+    /*task_queue* q = init_queue(1);
     taskqc_msg msg1 = taskqc_msg_init(strlen("AAAABBBB"),"AAAABBBB");
     taskqc_msg msg2 = taskqc_msg_init(strlen("BBBB"),"BBBB");
     taskqc_msg msg3 = taskqc_msg_init(strlen("AAAA"),"AAAA");
@@ -32,8 +33,16 @@ int main(int argc,char** argv){
     printf("=====\n");
     print_queue(q);
     printf("%d\n",a->length);
-    //taskqc_send_msg(socket,&msg);
-    //free(msg.data);
+    */
+    taskqc_msg* msg1 = taskqc_msg_init(strlen("AAAABBBB"),"AAAABBBB");
+    taskqc_msg* msg2 = taskqc_msg_init(strlen("CCCCC"),"CCCCCC");
+    taskqc_send_msg(socket,msg1);
     //taskqc_socket_delete(socket);
+    //socket = taskqc_socket_init(9999,"127.0.0.1");
+    //taskqc_connect(socket);
+    taskqc_send_msg(socket,msg2);
+    taskqc_msg_delete(msg1);
+    taskqc_msg_delete(msg2);
+    taskqc_socket_delete(socket);
     return 0;
 }

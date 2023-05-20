@@ -404,3 +404,16 @@ int taskqc_recv(taskqc_socket* socket, void* buffer, uint32_t buffer_sz, uint32_
         printf("Got the string! %s\n",(char*)buffer);
         return 0;
 }
+
+
+
+
+
+void *get_client_address(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}

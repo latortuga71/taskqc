@@ -15,6 +15,15 @@ void *get_in_addr(struct sockaddr *sa)
 int main(int argc,char** argv){
     taskqc_socket* socket = taskqc_socket_init(9999,"127.0.0.1");
     taskqc_connect(socket);
+    taskqc_msg* msg1 = taskqc_msg_init(strlen("AAAABBBB"),"AAAABBBB");
+    taskqc_msg* msg2 = taskqc_msg_init(strlen("CCCCC"),"CCCCCC");
+    taskqc_send_msg(socket,msg1);
+    char* buffer = malloc(sizeof(char) * 1024);
+    int nread = recv(socket->socket,buffer,1024,0);
+    buffer[nread] = '\0';
+    printf("Broker Said -> %s\n",buffer);
+    taskqc_msg_delete(msg1);
+    taskqc_socket_delete(socket);
     //char data[] = "BUFFERTESTER";
     //printf("Length %li\n",strlen(data));
     //taskqc_send(socket, data, strlen(data));
@@ -34,15 +43,5 @@ int main(int argc,char** argv){
     print_queue(q);
     printf("%d\n",a->length);
     */
-    taskqc_msg* msg1 = taskqc_msg_init(strlen("AAAABBBB"),"AAAABBBB");
-    taskqc_msg* msg2 = taskqc_msg_init(strlen("CCCCC"),"CCCCCC");
-    taskqc_send_msg(socket,msg1);
-    //taskqc_socket_delete(socket);
-    //socket = taskqc_socket_init(9999,"127.0.0.1");
-    //taskqc_connect(socket);
-    taskqc_send_msg(socket,msg2);
-    taskqc_msg_delete(msg1);
-    taskqc_msg_delete(msg2);
-    taskqc_socket_delete(socket);
     return 0;
 }

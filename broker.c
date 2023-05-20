@@ -19,52 +19,55 @@ task_queue* global_task_queue = NULL;
 int worker_thread_index = 0;
 
 void* worker_client_handler(void* arg){
-        int fd = *((int*)arg);
-        while(1){
-            sleep(1);
-            taskqc_msg* task = pop_queue_msg(global_task_queue);
-            if (task == NULL){
-                fprintf(stderr,"debug::broker_worker_handler::no tasks to pop\n");
-                continue;
-            }
-            fprintf(stderr,"debug::broker_worker_handler::popped task %s off queue\n",(char*)task->data);
-            print_queue(global_task_queue);
-            int nwrote = send(fd,&task->length,sizeof(task->length),0);
-            if (nwrote == -1){
-                fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
-            } else {
-                fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
-            }
-            nwrote = send(fd,task->data,task->length,0);
-            if (nwrote == -1){
-                fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
-            } else {
-                fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
-            }
+    int fd = *((int*)arg);
+    char buffer[1024];
+    while(1){
+        sleep(1);
+        taskqc_msg* task = pop_queue_msg(global_task_queue);
+        if (task == NULL){
+            fprintf(stderr,"debug::broker_worker_handler::no tasks to pop\n");
+            continue;
         }
-        close(fd);
-        worker_thread_index--;
-        pthread_exit(NULL);
+        fprintf(stderr,"debug::broker_worker_handler::popped task %s off queue\n",(char*)task->data);
+        print_queue(global_task_queue);
+        int nwrote = send(fd,&task->length,sizeof(task->length),0);
+        if (nwrote == -1){
+            fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
+        } else {
+            fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
+        }
+        nwrote = send(fd,task->data,task->length,0);
+        if (nwrote == -1){
+            fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
+        } else {
+            fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
+        }
+        recv(fd,buffer,sizeof(buffer),0);
+        free(task->data);
+        free(task);
+    }
+    close(fd);
+    worker_thread_index--;
+    pthread_exit(NULL);
 }
 
 void* broker_client_handler(void* arg){
-        int fd = *((int*)arg);
-        // cast to int
-        taskqc_msg* msg1 = calloc(1,sizeof(taskqc_msg));
-        taskqc_recv_msg(fd,msg1);
-        push_queue_msg(global_task_queue, msg1);
-        fprintf(stderr,"debug::broker_client_handler::pushed task %s on queue\n",(char*)msg1->data);
-        print_queue(global_task_queue);
-        char ok_buffer[] = "OK\0";
-        int nwrote = send(fd, ok_buffer, sizeof(ok_buffer),0);
-        if (nwrote == -1){
-            fprintf(stderr,"error::broker_client_handler::failed to send client OK\n");
-        } else {
-            fprintf(stderr,"debug::broker_client_handler::sent %d bytes client OK!\n",nwrote);
-        }
-        close(fd);
-        client_thread_index--;
-        pthread_exit(NULL);
+    int fd = *((int*)arg);
+    taskqc_msg* msg1 = calloc(1,sizeof(taskqc_msg));
+    taskqc_recv_msg(fd,msg1);
+    push_queue_msg(global_task_queue, msg1);
+    fprintf(stderr,"debug::broker_client_handler::pushed task %s on queue\n",(char*)msg1->data);
+    print_queue(global_task_queue);
+    char ok_buffer[] = "OK\0";
+    int nwrote = send(fd, ok_buffer, sizeof(ok_buffer),0);
+    if (nwrote == -1){
+        fprintf(stderr,"error::broker_client_handler::failed to send client OK\n");
+    } else {
+        fprintf(stderr,"debug::broker_client_handler::sent %d bytes client OK!\n",nwrote);
+    }
+    close(fd);
+    client_thread_index--;
+    pthread_exit(NULL);
 }
 
 
@@ -119,7 +122,6 @@ int main(int argc,char** argv){
      * Args for listening port
      * Args for listening ip
      */
-
     fprintf(stderr,"debug::main::starting broker...\n");
     global_task_queue = init_queue(10);
     pthread_t server_threads[2];

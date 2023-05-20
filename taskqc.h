@@ -357,25 +357,19 @@ int taskqc_send_msg(taskqc_socket* socket, taskqc_msg* msg){
     ssize_t nwrote = send(socket->socket, frame, sizeof(msg->length) + msg->length, 0);
     if (nwrote == -1){
         fprintf(stderr,"error::taskqc_send_msg::send::%d",errno);
+        perror("ERR");
         return errno;
     }
-    printf("SENT FRAME! %li\n",nwrote);
     free(frame);
     return 0;
 }
 
 int taskqc_send(taskqc_socket* socket, void* buffer, uint32_t buffer_sz){
-    socklen_t addr_size = sizeof(struct sockaddr_in);
-    if (connect(socket->socket,(struct sockaddr*)socket->taskqc_addr,addr_size) == -1){
-        fprintf(stderr,"error::taskqc_send_msg::connect::%d",errno);
-        return errno;
-    }
     ssize_t nwrote = send(socket->socket,buffer,buffer_sz,0);
     if (nwrote == -1){
         fprintf(stderr,"error::taskqc_send_msg::send::%d",errno);
         return errno;
     }
-    printf("SENT DATA! %li\n",nwrote);
     return 0;
 }
 

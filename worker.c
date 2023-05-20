@@ -50,11 +50,14 @@ void* worker_process(void* arg){
 }
 
 int main(int argc,char** argv){
+    fprintf(stderr,"TODO DEBUG/ERROR LOGS\n");
+    fprintf(stderr,"TODO LOCK THREAD COUNT\n");
+    fprintf(stderr,"TODO WORKER ARGS (name,host,broker,max processes etc,database\n");
     taskqc_socket* socket = taskqc_socket_init(9998,"127.0.0.1");
     taskqc_connect(socket);
     taskqc_msg msg;
     while(1){
-        if (worker_thread_index > 2){
+        if (worker_thread_index >= 2){
             printf("Too many worker processes...sleeping\n");
             sleep(1);
             continue;
@@ -63,7 +66,7 @@ int main(int argc,char** argv){
             printf("%d Threads running\n",worker_thread_index);
             taskqc_recv_msg(socket->socket,&msg);
             pthread_create(&worker_thread_pool[worker_thread_index++],NULL,&worker_process,&msg);
-            send(socket->socket,"OK!",3,0);
+            taskqc_send(socket,"OK!",3);
         }
     }
 

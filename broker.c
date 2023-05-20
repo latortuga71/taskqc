@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
+#include <signal.h>
 #include "taskqc.h"
+
 
 #define CLIENT_LISTENER 0
 #define WORKER_LISTENER 1
+#define MAX_MSG_SIZE 1024
 
 // client listener configs
 char* global_client_address = NULL;
@@ -19,7 +22,7 @@ task_queue* global_task_queue = NULL;
 int worker_thread_index = 0;
 
 void* worker_client_handler(void* arg){
-    int fd = *((int*)arg);
+    taskqc_socket socket = *((taskqc_socket*)arg);
     char buffer[1024];
     while(1){
         sleep(1);
@@ -30,23 +33,20 @@ void* worker_client_handler(void* arg){
         }
         fprintf(stderr,"debug::broker_worker_handler::popped task %s off queue\n",(char*)task->data);
         print_queue(global_task_queue);
-        int nwrote = send(fd,&task->length,sizeof(task->length),0);
-        if (nwrote == -1){
-            fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
+        if (taskqc_send_msg(&socket,task) != 0){
+            fprintf(stderr,"debug::broker_worker_handler::failed to send task to %d socket",socket.socket);
+            push_queue_msg(global_task_queue, task);
+            printf("push\n");
+            sleep(60);
         } else {
-            fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
+            recv(socket.socket,buffer,sizeof(buffer),0);
+            printf("Got this from the client! -> %s\n",buffer);
+            printf("Worker ready for more\n");
+            free(task->data);
+            free(task);
         }
-        nwrote = send(fd,task->data,task->length,0);
-        if (nwrote == -1){
-            fprintf(stderr,"error::broker_worker_handler::failed to server worker task\n");
-        } else {
-            fprintf(stderr,"debug::broker_worker_handler::sent %d bytes task to worker\n",nwrote);
-        }
-        recv(fd,buffer,sizeof(buffer),0);
-        free(task->data);
-        free(task);
     }
-    close(fd);
+    close(socket.socket);
     worker_thread_index--;
     pthread_exit(NULL);
 }
@@ -111,8 +111,14 @@ void* worker_client_listener(){
         }
         inet_ntop(client_addr.ss_family,get_client_address((struct sockaddr*)&client_addr),s,sizeof(s));
         fprintf(stderr,"debug::broker::worker_client_listener::worker connection from %s\n",s);
-        pthread_create(&worker_thread_pool[worker_thread_index++],NULL,&worker_client_handler,&new_fd);
+        taskqc_socket worker_socket = {
+            .socket = new_fd,
+            .taskqc_addr = NULL,
+            .max_connections = 0,
+        };
+        pthread_create(&worker_thread_pool[worker_thread_index++],NULL,&worker_client_handler,&worker_socket);
     }
+    printf("listener end\n");
 }
 
 int main(int argc,char** argv){
@@ -122,6 +128,8 @@ int main(int argc,char** argv){
      * Args for listening port
      * Args for listening ip
      */
+    // this stops broken pipes from crashing whole server.
+    signal(SIGPIPE,SIG_IGN);
     fprintf(stderr,"debug::main::starting broker...\n");
     global_task_queue = init_queue(10);
     pthread_t server_threads[2];
@@ -129,5 +137,6 @@ int main(int argc,char** argv){
     pthread_create(&server_threads[WORKER_LISTENER],NULL,&worker_client_listener,NULL);
     pthread_join(server_threads[CLIENT_LISTENER],NULL);
     pthread_join(server_threads[WORKER_LISTENER],NULL);
+    printf("Server End\n");
     return 0;
 }

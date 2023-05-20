@@ -5,6 +5,8 @@
 pthread_t worker_thread_pool[1024];
 int worker_thread_index = 0;
 
+extern char** environ;
+
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -33,12 +35,13 @@ void* worker_process(void* arg){
         dup2(link[1],STDOUT_FILENO);
         close(link[0]);
         close(link[1]);
-        execve("/usr/bin/who",NULL,NULL);
+        char* argv[] = {msg.data,NULL};
+        execvp(msg.data,argv);
         exit(0);
     } else {
         close(link[1]);
         int nbytes = read(link[0],buffer,sizeof(buffer));
-        //printf(" * Command Result\n %s\n",buffer);
+        printf(" * Command Result\n %s\n",buffer);
         wait(NULL);
     }
     sleep(5);

@@ -13,10 +13,13 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 int main(int argc,char** argv){
+    if (argc < 2){
+        fprintf(stderr,"Need Args\n");
+        return 0;
+    }
     taskqc_socket* socket = taskqc_socket_init(9999,"127.0.0.1");
     taskqc_connect(socket);
-    taskqc_msg* msg1 = taskqc_msg_init(strlen("AAAABBBB"),"AAAABBBB");
-    taskqc_msg* msg2 = taskqc_msg_init(strlen("CCCCC"),"CCCCCC");
+    taskqc_msg* msg1 = taskqc_msg_init(strlen(argv[1]),argv[1]);
     taskqc_send_msg(socket,msg1);
     char* buffer = malloc(sizeof(char) * 1024);
     int nread = recv(socket->socket,buffer,1024,0);

@@ -53,7 +53,6 @@ void* worker_process(void* arg){
     push_queue_msg(global_results_queue,out);
     worker_thread_index--;
     pthread_exit(NULL);
-
 }
 
 void* worker_handler(){

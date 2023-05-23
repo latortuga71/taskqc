@@ -19,10 +19,16 @@ void *get_in_addr(struct sockaddr *sa)
 void* worker_process(void* arg){
     taskqc_msg msg = *((taskqc_msg*)arg);
     printf("Worker Executing %s Task\n",(char*)msg.data);
-    int link[2];
+    int stdoutlink[2];
+    int stderrlink[2];
     pid_t pid;
-    char buffer[4096];
-    if (pipe(link) == -1){
+    char stdoutbuffer[4096];
+    char stderrbuffer[4096];
+    if (pipe(stdoutlink) == -1){
+        fprintf(stderr,"error::worker_process::pipe::%d\n",errno);
+        exit(-1);
+    }
+    if (pipe(stderrlink) == -1){
         fprintf(stderr,"error::worker_process::pipe::%d\n",errno);
         exit(-1);
     }
@@ -32,16 +38,22 @@ void* worker_process(void* arg){
     }
     // child process
     if (pid == 0){
-        dup2(link[1],STDOUT_FILENO);
-        close(link[0]);
-        close(link[1]);
+        dup2(stdoutlink[1],STDOUT_FILENO);
+        dup2(stderrlink[1],STDERR_FILENO);
+        close(stdoutlink[0]);
+        close(stdoutlink[1]);
+        close(stderrlink[0]);
+        close(stderrlink[1]);
         char* argv[] = {msg.data,NULL};
         execvp(msg.data,argv);
         exit(0);
     } else {
-        close(link[1]);
-        int nbytes = read(link[0],buffer,sizeof(buffer));
-        printf(" * Command Result\n %s\n",buffer);
+        close(stdoutlink[1]);
+        close(stderrlink[1]);
+        int stdoutbytes = read(stdoutlink[0],stdoutbuffer,sizeof(stdoutbuffer));
+        int stderrbytes = read(stderrlink[0],stderrbuffer,sizeof(stderrbuffer));
+        printf(" * Command STDOUT\n %s\n",stdoutbuffer);
+        printf(" * Command STDERR\n %s\n",stderrbuffer);
         wait(NULL);
     }
     sleep(5);
